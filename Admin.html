@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم وتفعيل أداة المقاول الذكي - Devext</title>
+    <title>لوحة تفعيل أداة المقاول الذكي - Devext</title>
     <style>
         body { font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 20px; text-align: center; }
         .container { max-width: 600px; margin: 0 auto; }
@@ -26,48 +26,34 @@
 
     <div class="container">
         <h2>لوحة إشراف تطبيق المقاول الذكي 🛠️</h2>
-        <p style="color: #94a3b8; margin-bottom: 25px;">إدارة الأجهزة والتفعيل، البحث، الحذف، والإضافة المباشرة في Supabase</p>
-
-        <!-- 1. كارت البحث والتعديل والحذف -->
         <div class="card">
             <h3>🔍 البحث عن جهاز وإدارة حالته</h3>
-            <label>كود جهاز العميل (Device ID):</label>
             <input type="text" id="search-device-id" placeholder="مثال: TSCAM-XXXXXX">
-            
             <button onclick="searchDevice()" class="btn btn-blue">🔍 فحص وبحث عن الجهاز</button>
             
             <div id="search-result-box" class="info-box" style="display: none;">
-                <p>📊 <strong>الحالة الحالية في السحابة:</strong></p>
+                <p>📊 <strong>الحالة الحالية:</strong></p>
                 <div id="device-details" style="color: #e2e8f0; font-family: monospace; direction: ltr; text-align: center;"></div>
-                
                 <hr style="border-color: #334155; margin: 15px 0;">
-                
-                <label style="text-align: right;">تعديل باقة الاشتراك:</label>
                 <select id="update-plan-status">
                     <option value="monthly">باقة شهرية (Monthly)</option>
                     <option value="yearly">باقة سنوية (Yearly)</option>
                     <option value="trial">فترة تجريبية 48 ساعة جديدة (Trial)</option>
                 </select>
                 <button onclick="updateDevice()" class="btn btn-green">💾 حفظ التعديل / تفعيل الحساب</button>
-                <button onclick="deleteDevice()" class="btn btn-red" style="margin-top: 15px;">🗑️ حذف الجهاز تماماً من السحابة</button>
+                <button onclick="deleteDevice()" class="btn btn-red" style="margin-top: 15px;">🗑️ حذف الجهاز تماماً</button>
             </div>
-            
             <div class="status" id="search-status"></div>
         </div>
 
-        <!-- 2. كارت إضافة جهاز جديد يدوياً -->
         <div class="card">
             <h3>➕ إضافة جهاز جديد يدويّاً</h3>
-            <label>كود الجهاز الجديد:</label>
             <input type="text" id="add-device-id" placeholder="مثال: TSCAM-YYYYYY">
-            
-            <label>نوع الحساب الابتدائي:</label>
             <select id="add-plan-status">
                 <option value="trial">فترة تجريبية (48 ساعة)</option>
-                <option value="monthly">باقة شهرية مدفوعة (Month)</option>
-                <option value="yearly">باقة سنوية مدفوعة (Year)</option>
+                <option value="monthly">باقة شهرية مدفوعة</option>
+                <option value="yearly">باقة سنوية مدفوعة</option>
             </select>
-            
             <button onclick="addNewDevice()" class="btn btn-green">➕ تسجيل وإضافة الجهاز الآن</button>
             <div class="status" id="add-status"></div>
         </div>
@@ -77,205 +63,72 @@
         const SUPABASE_URL = "https://lwffkkzdkvafyuwrcbzl.supabase.co";
         const SUPABASE_KEY = "EyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3ZmZra3pka3ZhZnl1d3JjYnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzODQ5NzUsImV4cCI6MjA5OTk2MDk3NX0.hD7SWLaZ1c1tNfSNuKYHceaqCqS1riqTb1BxfM3_2uA";
         
-        // استخدام بروكسي AllOrigins الأكثر استقراراً والموثوق للملفات المحلية
-        const PROXY_URL = "https://api.allorigins.win/raw?url=";
+        const getHeaders = () => ({ "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" });
 
-        // دالة 1: البحث عن وجود الجهاز
         async function searchDevice() {
             const deviceId = document.getElementById('search-device-id').value.trim();
             const statusDiv = document.getElementById('search-status');
             const resultBox = document.getElementById('search-result-box');
             const detailsDiv = document.getElementById('device-details');
-
-            if (!deviceId) { alert('برجاء إدخال كود الجهاز للبحث!'); return; }
-
-            statusDiv.innerText = "جاري البحث في قاعدة البيانات...";
-            resultBox.style.display = "none";
+            if (!deviceId) return;
+            statusDiv.innerText = "جاري البحث..."; resultBox.style.display = "none";
 
             try {
-                const targetUrl = `${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`;
-                const finalUrl = PROXY_URL + encodeURIComponent(targetUrl);
-                
-                const response = await fetch(finalUrl, {
-                    method: "GET",
-                    headers: { 
-                        "apikey": SUPABASE_KEY, 
-                        "Authorization": "Bearer " + SUPABASE_KEY
-                    }
-                });
-                const data = await response.json();
-
-                if (!data || data.length === 0) {
-                    statusDiv.innerHTML = `<span style="color: #ef4444;">❌ هذا الجهاز غير موجود حالياً في السحابة!</span>`;
-                } else {
-                    statusDiv.innerText = "";
-                    const user = data[0];
-                    
-                    let infoHtml = `ID: ${user.device_id}<br>`;
-                    infoHtml += `Is Subscribed: ${user.is_subscribed}<br>`;
-                    infoHtml += `Trial Expires At: ${user.trial_expires_at ? new Date(user.trial_expires_at).toLocaleString('ar-EG') : 'N/A'}<br>`;
-                    infoHtml += `Subscription Expires At: ${user.subscription_expires_at ? new Date(user.subscription_expires_at).toLocaleString('ar-EG') : 'N/A'}`;
-                    
-                    detailsDiv.innerHTML = infoHtml;
+                const r = await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { headers: getHeaders() });
+                const d = await r.json();
+                if (!d || d.length === 0) { statusDiv.innerHTML = `❌ الجهاز غير موجود.`; } 
+                else {
+                    statusDiv.innerText = ""; const u = d[0];
+                    detailsDiv.innerHTML = `ID: ${u.device_id}<br>Subscribed: ${u.is_subscribed}<br>Trial Expiry: ${u.trial_expires_at ? new Date(u.trial_expires_at).toLocaleString() : 'N/A'}<br>Sub Expiry: ${u.subscription_expires_at ? new Date(u.subscription_expires_at).toLocaleString() : 'N/A'}`;
                     resultBox.style.display = "block";
                 }
-            } catch (error) {
-                console.error(error);
-                statusDiv.innerHTML = `<span style="color: #ef4444;">❌ خطأ أثناء الاتصال بالسحابة.</span>`;
-            }
+            } catch (e) { statusDiv.innerText = "❌ خطأ في الاتصال."; }
         }
 
-        // دالة 2: تحديث وتفعيل الحساب
         async function updateDevice() {
             const deviceId = document.getElementById('search-device-id').value.trim();
             const plan = document.getElementById('update-plan-status').value;
             const statusDiv = document.getElementById('search-status');
-
-            statusDiv.innerText = "جاري تحديث البيانات...";
-
-            let isSub = false;
-            let subExpiry = null;
-            let trialExpiry = null;
-
-            const now = new Date();
-            if (plan === 'monthly') {
-                isSub = true;
-                now.setMonth(now.getMonth() + 1);
-                subExpiry = now.toISOString();
-            } else if (plan === 'yearly') {
-                isSub = true;
-                now.setFullYear(now.getFullYear() + 1);
-                subExpiry = now.toISOString();
-            } else if (plan === 'trial') {
-                isSub = false;
-                now.setHours(now.getHours() + 48);
-                trialExpiry = now.toISOString();
-            }
+            statusDiv.innerText = "جاري التحديث...";
+            let isSub = plan !== 'trial', subExpiry = null, trialExpiry = null, now = new Date();
+            if (plan === 'monthly') { now.setMonth(now.getMonth() + 1); subExpiry = now.toISOString(); }
+            if (plan === 'yearly') { now.setFullYear(now.getFullYear() + 1); subExpiry = now.toISOString(); }
+            if (plan === 'trial') { now.setHours(now.getHours() + 48); trialExpiry = now.toISOString(); }
 
             try {
-                const targetUrl = `${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`;
-                const finalUrl = PROXY_URL + encodeURIComponent(targetUrl);
-                
-                await fetch(finalUrl, {
-                    method: "PATCH",
-                    headers: {
-                        "apikey": SUPABASE_KEY,
-                        "Authorization": "Bearer " + SUPABASE_KEY,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        is_subscribed: isSub,
-                        subscription_expires_at: subExpiry,
-                        trial_expires_at: trialExpiry
-                    })
-                });
-
-                statusDiv.innerHTML = `<span style="color: #22c55e;">✅ تم تحديث وتفعيل الجهاز بنجاح!</span>`;
-                searchDevice();
-            } catch (error) {
-                console.error(error);
-                statusDiv.innerHTML = `<span style="color: #ef4444;">❌ فشل التحديث.</span>`;
-            }
+                await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { method: "PATCH", headers: getHeaders(), body: JSON.stringify({ is_subscribed: isSub, subscription_expires_at: subExpiry, trial_expires_at: trialExpiry }) });
+                statusDiv.innerHTML = `✅ تم التفعيل بنجاح!`; searchDevice();
+            } catch (e) { statusDiv.innerText = "❌ فشل التحديث."; }
         }
 
-        // دالة 3: حذف الجهاز
         async function deleteDevice() {
             const deviceId = document.getElementById('search-device-id').value.trim();
-            const statusDiv = document.getElementById('search-status');
-            const resultBox = document.getElementById('search-result-box');
-
-            if(!confirm(`هل أنت متأكد تماماً من حذف الجهاز [${deviceId}] نهائياً من السحابة؟`)) return;
-
-            statusDiv.innerText = "جاري الحذف...";
-
+            if(!confirm("حذف نهائي؟")) return;
             try {
-                const targetUrl = `${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`;
-                const finalUrl = PROXY_URL + encodeURIComponent(targetUrl);
-                
-                await fetch(finalUrl, {
-                    method: "DELETE",
-                    headers: {
-                        "apikey": SUPABASE_KEY,
-                        "Authorization": "Bearer " + SUPABASE_KEY
-                    }
-                });
-
-                statusDiv.innerHTML = `<span style="color: #22c55e;">🗑️ تم حذف سجل الجهاز بالكامل بنجاح من السحابة.</span>`;
-                resultBox.style.display = "none";
-                document.getElementById('search-device-id').value = "";
-            } catch (error) {
-                console.error(error);
-                statusDiv.innerHTML = `<span style="color: #ef4444;">❌ فشل حذف الجهاز.</span>`;
-            }
+                await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { method: "DELETE", headers: getHeaders() });
+                document.getElementById('search-result-box').style.display = "none";
+                document.getElementById('search-status').innerText = "🗑️ تم الحذف بنجاح.";
+            } catch (e) { document.getElementById('search-status').innerText = "❌ فشل الحذف."; }
         }
 
-        // دالة 4: إضافة جهاز جديد يدوياً
         async function addNewDevice() {
             const deviceId = document.getElementById('add-device-id').value.trim();
             const plan = document.getElementById('add-plan-status').value;
             const statusDiv = document.getElementById('add-status');
-
-            if (!deviceId) { alert('برجاء كتابة كود الجهاز المراد إضافته!'); return; }
-
-            statusDiv.innerText = "جاري تسجيل الجهاز الجديد...";
-
-            let isSub = false;
-            let subExpiry = null;
-            let trialExpiry = null;
-
-            const now = new Date();
-            if (plan === 'monthly') {
-                isSub = true;
-                now.setMonth(now.getMonth() + 1);
-                subExpiry = now.toISOString();
-            } else if (plan === 'yearly') {
-                isSub = true;
-                now.setFullYear(now.getFullYear() + 1);
-                subExpiry = now.toISOString();
-            } else if (plan === 'trial') {
-                isSub = false;
-                now.setHours(now.getHours() + 48);
-                trialExpiry = now.toISOString();
-            }
+            if (!deviceId) return;
+            statusDiv.innerText = "جاري الإضافة...";
+            let isSub = plan !== 'trial', subExpiry = null, trialExpiry = null, now = new Date();
+            if (plan === 'monthly') { now.setMonth(now.getMonth() + 1); subExpiry = now.toISOString(); }
+            if (plan === 'yearly') { now.setFullYear(now.getFullYear() + 1); subExpiry = now.toISOString(); }
+            if (plan === 'trial') { now.setHours(now.getHours() + 48); trialExpiry = now.toISOString(); }
 
             try {
-                const checkUrl = `${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`;
-                const finalCheckUrl = PROXY_URL + encodeURIComponent(checkUrl);
-                
-                const checkRes = await fetch(finalCheckUrl, {
-                    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
-                });
-                const checkData = await checkRes.json();
-
-                if (checkData && checkData.length > 0) {
-                    statusDiv.innerHTML = `<span style="color: #ef4444;">⚠️ خطأ: هذا الجهاز مسجل بالفعل من قبل!</span>`;
-                    return;
-                }
-
-                const postUrl = `${SUPABASE_URL}/rest/v1/users`;
-                const finalPostUrl = PROXY_URL + encodeURIComponent(postUrl);
-                
-                await fetch(finalPostUrl, {
-                    method: "POST",
-                    headers: {
-                        "apikey": SUPABASE_KEY,
-                        "Authorization": "Bearer " + SUPABASE_KEY,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        device_id: deviceId,
-                        is_subscribed: isSub,
-                        subscription_expires_at: subExpiry,
-                        trial_expires_at: trialExpiry
-                    })
-                });
-
-                statusDiv.innerHTML = `<span style="color: #22c55e;">✨ تم إضافة وتجهيز الجهاز الجديد بنجاح في السحابة!</span>`;
-                document.getElementById('add-device-id').value = "";
-            } catch (error) {
-                console.error(error);
-                statusDiv.innerHTML = `<span style="color: #ef4444;">❌ فشل إضافة الجهاز الجديد.</span>`;
-            }
+                const cr = await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { headers: getHeaders() });
+                const cd = await cr.json();
+                if (cd && cd.length > 0) { statusDiv.innerText = "⚠️ مسجل بالفعل!"; return; }
+                await fetch(`${SUPABASE_URL}/rest/v1/users`, { method: "POST", headers: getHeaders(), body: JSON.stringify({ device_id: deviceId, is_subscribed: isSub, subscription_expires_at: subExpiry, trial_expires_at: trialExpiry }) });
+                statusDiv.innerText = "✅ تم إضافة الجهاز بنجاح!";
+            } catch (e) { statusDiv.innerText = "❌ فشل الإضافة."; }
         }
     </script>
 </body>
