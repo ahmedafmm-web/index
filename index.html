@@ -63,7 +63,13 @@
         const SUPABASE_URL = "https://lwffkkzdkvafyuwrcbzl.supabase.co";
         const SUPABASE_KEY = "EyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3ZmZra3pka3ZhZnl1d3JjYnpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzODQ5NzUsImV4cCI6MjA5OTk2MDk3NX0.hD7SWLaZ1c1tNfSNuKYHceaqCqS1riqTb1BxfM3_2uA";
         
-        const getHeaders = () => ({ "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" });
+        // الهيدرز المحدثة الصارمة لتخطي حظر الأمان
+        const getHeaders = () => ({ 
+            "apikey": SUPABASE_KEY, 
+            "Authorization": `Bearer ${SUPABASE_KEY}`, 
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        });
 
         async function searchDevice() {
             const deviceId = document.getElementById('search-device-id').value.trim();
@@ -74,15 +80,19 @@
             statusDiv.innerText = "جاري البحث..."; resultBox.style.display = "none";
 
             try {
-                const r = await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { headers: getHeaders() });
+                const r = await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { 
+                    method: "GET",
+                    mode: "cors",
+                    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+                });
                 const d = await r.json();
-                if (!d || d.length === 0) { statusDiv.innerHTML = `❌ الجهاز غير موجود.`; } 
+                if (!d || d.length === 0) { statusDiv.innerHTML = `❌ الجهاز غير موجود في السحابة.`; } 
                 else {
                     statusDiv.innerText = ""; const u = d[0];
                     detailsDiv.innerHTML = `ID: ${u.device_id}<br>Subscribed: ${u.is_subscribed}<br>Trial Expiry: ${u.trial_expires_at ? new Date(u.trial_expires_at).toLocaleString() : 'N/A'}<br>Sub Expiry: ${u.subscription_expires_at ? new Date(u.subscription_expires_at).toLocaleString() : 'N/A'}`;
                     resultBox.style.display = "block";
                 }
-            } catch (e) { statusDiv.innerText = "❌ خطأ في الاتصال."; }
+            } catch (e) { statusDiv.innerText = "❌ خطأ في الاتصال بالسحابة."; }
         }
 
         async function updateDevice() {
@@ -96,7 +106,12 @@
             if (plan === 'trial') { now.setHours(now.getHours() + 48); trialExpiry = now.toISOString(); }
 
             try {
-                await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { method: "PATCH", headers: getHeaders(), body: JSON.stringify({ is_subscribed: isSub, subscription_expires_at: subExpiry, trial_expires_at: trialExpiry }) });
+                await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { 
+                    method: "PATCH", 
+                    mode: "cors",
+                    headers: getHeaders(), 
+                    body: JSON.stringify({ is_subscribed: isSub, subscription_expires_at: subExpiry, trial_expires_at: trialExpiry }) 
+                });
                 statusDiv.innerHTML = `✅ تم التفعيل بنجاح!`; searchDevice();
             } catch (e) { statusDiv.innerText = "❌ فشل التحديث."; }
         }
@@ -105,7 +120,11 @@
             const deviceId = document.getElementById('search-device-id').value.trim();
             if(!confirm("حذف نهائي؟")) return;
             try {
-                await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { method: "DELETE", headers: getHeaders() });
+                await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { 
+                    method: "DELETE", 
+                    mode: "cors",
+                    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } 
+                });
                 document.getElementById('search-result-box').style.display = "none";
                 document.getElementById('search-status').innerText = "🗑️ تم الحذف بنجاح.";
             } catch (e) { document.getElementById('search-status').innerText = "❌ فشل الحذف."; }
@@ -123,10 +142,19 @@
             if (plan === 'trial') { now.setHours(now.getHours() + 48); trialExpiry = now.toISOString(); }
 
             try {
-                const cr = await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { headers: getHeaders() });
+                const cr = await fetch(`${SUPABASE_URL}/rest/v1/users?device_id=eq.${deviceId}`, { 
+                    method: "GET",
+                    mode: "cors",
+                    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } 
+                });
                 const cd = await cr.json();
                 if (cd && cd.length > 0) { statusDiv.innerText = "⚠️ مسجل بالفعل!"; return; }
-                await fetch(`${SUPABASE_URL}/rest/v1/users`, { method: "POST", headers: getHeaders(), body: JSON.stringify({ device_id: deviceId, is_subscribed: isSub, subscription_expires_at: subExpiry, trial_expires_at: trialExpiry }) });
+                await fetch(`${SUPABASE_URL}/rest/v1/users`, { 
+                    method: "POST", 
+                    mode: "cors",
+                    headers: getHeaders(), 
+                    body: JSON.stringify({ device_id: deviceId, is_subscribed: isSub, subscription_expires_at: subExpiry, trial_expires_at: trialExpiry }) 
+                });
                 statusDiv.innerText = "✅ تم إضافة الجهاز بنجاح!";
             } catch (e) { statusDiv.innerText = "❌ فشل الإضافة."; }
         }
